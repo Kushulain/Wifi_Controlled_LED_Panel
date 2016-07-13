@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <!--<script type='text/javascript' src='/main.js'> </script>-->
+  <title>Ecran LED</title>
+  <meta name='description' content='Manipule l&#39;écran à LED du Jardin d&#39;Alice à distance. Penses à faire une backup de ton texte sur ta machine. ;)'>
+</head>
+<body>
+
+
+<h1>Ecran LED</h1>
+<!--
+<p id='demo'>JavaScript 1 1 1  can change HTML content.</p>
+-->
+<!-- <button type='button'
+onclick='document.getElementById('demo').innerHTML = 'Hello JavaScript!''>
+Click Me!</button>
+-->
+
+<table><tr><td><p><input type='button' onclick='ChangeMode()' value='Défilement :'>
+</td><td>
+<p id='textmodeui'>Par Page</p></td></tr></table>
+
+<p>
+Délai de rafraichissement
+<input id='delay-input' onkeyup='CorrectAndApplyDelay()' value='1.0'>
+</p>
+
+<p>
+<label>Entrer le texte à afficher sur l&#39;écran :
+<input id='text-input' value='Entrez votre texte...'>
+<button type='button' onclick='GenerateFromText()'>Générer </button>
+</p>
+
+<p>
+<label for='files'>Sélectionner des fichiers : </label>
+<input id='files' type='file' multiple/>
+</p>
+
+
+
+
+
+<p><button type='button' onclick='RemoveCurrentFrame()'>Suppr. Img.</button>
+<button type='button' onclick='FirstFrame()'>Première</button>
+<button type='button' onclick='PreviousFrame()'>Précédente</button>
+<button type='button' onclick='NextFrame()'>Suivante</button>
+<button type='button' onclick='LastFrame()'>Dernière</button>
+<label id='pageid'>0/0</p>
+  
+<button  type='button' onclick='PostDatas()'>Envoyer</button>
+<p></p>
+
+<script>
+
+
+//var LED_line_count = 1;
+//var LED_line_spacing = 0;
+//var LED_line_width = 4;
+//var LED_line_height = 4;
+var LED_line_count = 9;
+var LED_line_spacing = 5;
+var LED_line_width = 96;
+var LED_line_height = 7;
+var modeID = 0;
+var text_mode = ['Page par page','Défilement Vertical','Décalage'];
+var all_canvas = new Array();
+var inputText;
+var wanted_ImageID = -1;
+var displayed_ImageID = -1;
+var refreshDelay = 1.0;
+
+var ASCII_TO_2D = [
+    0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x5F, 0x00, 0x00,// !       33
+    0x00, 0x07, 0x00, 0x07, 0x00,// '       34
+    0x14, 0x7F, 0x14, 0x7F, 0x14,// #       35
+    0x24, 0x2A, 0x7F, 0x2A, 0x12,// $       36
+    0x23, 0x13, 0x08, 0x64, 0x62,// %       37
+    0x36, 0x49, 0x55, 0x22, 0x50,// &       38
+    0x00, 0x05, 0x03, 0x00, 0x00,// '       39
+    0x00, 0x1C, 0x22, 0x41, 0x00,// (       40
+    0x00, 0x41, 0x22, 0x1C, 0x00,// )       41
+    0x08, 0x2A, 0x1C, 0x2A, 0x08,// *       42
+    0x08, 0x08, 0x3E, 0x08, 0x08,// +       43
+    0x00, 0x50, 0x30, 0x00, 0x00,// ,       44
+    0x08, 0x08, 0x08, 0x08, 0x08,// -       45
+    0x00, 0x60, 0x60, 0x00, 0x00,// .       46
+    0x20, 0x10, 0x08, 0x04, 0x02,// /       47
+    0x3E, 0x51, 0x49, 0x45, 0x3E,// 0       48
+    0x00, 0x42, 0x7F, 0x40, 0x00,// 1       49
+    0x42, 0x61, 0x51, 0x49, 0x46,// 2       50
+    0x21, 0x41, 0x45, 0x4B, 0x31,// 3       51
+    0x18, 0x14, 0x12, 0x7F, 0x10,// 4       52
+    0x27, 0x45, 0x45, 0x45, 0x39,// 5       53
+    0x3C, 0x4A, 0x49, 0x49, 0x30,// 6       54
+    0x01, 0x71, 0x09, 0x05, 0x03,// 7       55
+    0x36, 0x49, 0x49, 0x49, 0x36,// 8       56
+    0x06, 0x49, 0x49, 0x29, 0x1E,// 9       57
+    0x00, 0x36, 0x36, 0x00, 0x00,// :       58
+    0x00, 0x56, 0x36, 0x00, 0x00,// ;       59
+    0x00, 0x08, 0x14, 0x22, 0x41,// <       60
+    0x14, 0x14, 0x14, 0x14, 0x14,// =       61
+    0x41, 0x22, 0x14, 0x08, 0x00,// >       62
+    0x02, 0x01, 0x51, 0x09, 0x06,// ?       63
+    0x32, 0x49, 0x79, 0x41, 0x3E,// @       64
+    0x7E, 0x11, 0x11, 0x11, 0x7E,// A       65
+    0x7F, 0x49, 0x49, 0x49, 0x36,// B       66
+    0x3E, 0x41, 0x41, 0x41, 0x22,// C       67
+    0x7F, 0x41, 0x41, 0x22, 0x1C,// D       68
+    0x7F, 0x49, 0x49, 0x49, 0x41,// E       69
+    0x7F, 0x09, 0x09, 0x01, 0x01,// F       70
+    0x3E, 0x41, 0x41, 0x51, 0x32,// G       71
+    0x7F, 0x08, 0x08, 0x08, 0x7F,// H       72
+    0x00, 0x41, 0x7F, 0x41, 0x00,// I       73
+    0x20, 0x40, 0x41, 0x3F, 0x01,// J       74
+    0x7F, 0x08, 0x14, 0x22, 0x41,// K       75
+    0x7F, 0x40, 0x40, 0x40, 0x40,// L       76
+    0x7F, 0x02, 0x04, 0x02, 0x7F,// M       77
+    0x7F, 0x04, 0x08, 0x10, 0x7F,// N       78
+    0x3E, 0x41, 0x41, 0x41, 0x3E,// O       79
+    0x7F, 0x09, 0x09, 0x09, 0x06,// P       80
+    0x3E, 0x41, 0x51, 0x21, 0x5E,// Q       81
+    0x7F, 0x09, 0x19, 0x29, 0x46,// R       82
+    0x46, 0x49, 0x49, 0x49, 0x31,// S       83
+    0x01, 0x01, 0x7F, 0x01, 0x01,// T       84
+    0x3F, 0x40, 0x40, 0x40, 0x3F,// U       85
+    0x1F, 0x20, 0x40, 0x20, 0x1F,// V       86
+    0x7F, 0x20, 0x18, 0x20, 0x7F,// W       87
+    0x63, 0x14, 0x08, 0x14, 0x63,// X       88
+    0x03, 0x04, 0x78, 0x04, 0x03,// Y       89
+    0x61, 0x51, 0x49, 0x45, 0x43,// Z       90
+    0x00, 0x00, 0x7F, 0x41, 0x41,// [       91
+    0x02, 0x04, 0x08, 0x10, 0x20,// '\'     92
+    0x41, 0x41, 0x7F, 0x00, 0x00,// ]       93
+    0x04, 0x02, 0x01, 0x02, 0x04,// ^       94
+    0x40, 0x40, 0x40, 0x40, 0x40,// _       95
+    0x00, 0x01, 0x02, 0x04, 0x00,// `       96
+    0x20, 0x54, 0x54, 0x54, 0x78,// a       97
+    0x7F, 0x48, 0x44, 0x44, 0x38,// b       98
+    0x38, 0x44, 0x44, 0x44, 0x20,// c       99
+    0x38, 0x44, 0x44, 0x48, 0x7F,// d       100
+    0x38, 0x54, 0x54, 0x54, 0x18,// e       101
+    0x08, 0x7E, 0x09, 0x01, 0x02,// f       102
+    0x08, 0x14, 0x54, 0x54, 0x3C,// g       103
+    0x7F, 0x08, 0x04, 0x04, 0x78,// h       104
+    0x00, 0x44, 0x7D, 0x40, 0x00,// i       105
+    0x20, 0x40, 0x44, 0x3D, 0x00,// j       106
+    0x00, 0x7F, 0x10, 0x28, 0x44,// k       107
+    0x00, 0x41, 0x7F, 0x40, 0x00,// l       108
+    0x7C, 0x04, 0x18, 0x04, 0x78,// m       109
+    0x7C, 0x08, 0x04, 0x04, 0x78,// n       110
+    0x38, 0x44, 0x44, 0x44, 0x38,// o       111
+    0x7C, 0x14, 0x14, 0x14, 0x08,// p       112
+    0x08, 0x14, 0x14, 0x18, 0x7C,// q       113
+    0x7C, 0x08, 0x04, 0x04, 0x08,// r       114
+    0x48, 0x54, 0x54, 0x54, 0x20,// s       115
+    0x04, 0x3F, 0x44, 0x40, 0x20,// t       116
+    0x3C, 0x40, 0x40, 0x20, 0x7C,// u       117
+    0x1C, 0x20, 0x40, 0x20, 0x1C,// v       118
+    0x3C, 0x40, 0x30, 0x40, 0x3C,// w       119
+    0x44, 0x28, 0x10, 0x28, 0x44,// x       120
+    0x0C, 0x50, 0x50, 0x50, 0x3C,// y       121
+    0x44, 0x64, 0x54, 0x4C, 0x44,// z       122
+    0x00, 0x08, 0x36, 0x41, 0x00,// {       123
+    0x00, 0x00, 0x7F, 0x00, 0x00,// |       124
+    0x00, 0x41, 0x36, 0x08, 0x00,// }       125
+    // EXTRA CHARS
+    0x00, 0x04, 0x02, 0x01, 0x00,// é       126
+    0x00, 0x01, 0x00, 0x01, 0x00,// ¨       127
+    //0x08, 0x08, 0x2A, 0x1C, 0x08,// ->
+    //0x08, 0x1C, 0x2A, 0x08, 0x08 // <-
+
+];
+
+function FirstFrame()
+{
+	wanted_ImageID = 0;
+	UpdatePreview();
+}
+
+function PreviousFrame()
+{
+	wanted_ImageID -= 1;
+	UpdatePreview();
+}
+
+
+function NextFrame()
+{
+	wanted_ImageID += 1;
+	UpdatePreview();
+}
+
+
+function LastFrame()
+{
+	wanted_ImageID = all_canvas.length-1;
+	UpdatePreview();
+}
+
+function RemoveCurrentFrame()
+{
+	if (displayed_ImageID > -1)
+	{
+		document.body.removeChild(all_canvas[displayed_ImageID]);
+		all_canvas.splice(displayed_ImageID, 1);
+		displayed_ImageID = -1;
+	}
+	UpdatePreview();
+}
+
+
+function UpdatePreview()
+{
+
+
+	if (all_canvas.length > 0)
+	{
+		wanted_ImageID = Math.min(wanted_ImageID,all_canvas.length-1);
+		wanted_ImageID = Math.max(wanted_ImageID,0);
+
+		if (displayed_ImageID != -1)
+		{
+
+			document.body.removeChild(all_canvas[displayed_ImageID]);
+		}
+
+		document.body.appendChild(all_canvas[wanted_ImageID]);
+		displayed_ImageID = wanted_ImageID;
+	}
+	else
+	{
+		if (displayed_ImageID != -1)
+		{
+			document.body.removeChild(all_canvas[displayed_ImageID]);
+		}
+		displayed_ImageID = -1;
+	}
+
+	document.getElementById('pageid').innerHTML = (displayed_ImageID+1) + '/' + (all_canvas.length);
+	console.log(document.getElementById('pageid').innerHTML);
+
+}
+
+function CorrectAndApplyDelay()
+{
+	var input = document.getElementById('delay-input').value;
+
+	for (var i=input.length-1; i>=0; i--)
+	{
+		if (input[i] != '0' &&
+		input[i] != '1' &&
+		input[i] != '2' &&
+		input[i] != '3' &&
+		input[i] != '4' &&
+		input[i] != '5' &&
+		input[i] != '6' &&
+		input[i] != '7' &&
+		input[i] != '8' &&
+		input[i] != '9' &&
+		input[i] != '.')
+		{
+			input = input.substring(0, i) + input.substring(i+1);
+		}
+	}
+	document.getElementById('delay-input').value = input;
+	refreshDelay = parseFloat(input);
+	if (isNaN(refreshDelay))
+	{
+		refreshDelay = 1.0;
+		if (input.length != '')
+		{
+			document.getElementById('delay-input').value = '1.0';
+		}
+	}
+
+}
+
+function ChangeMode()
+{
+
+    modeID = (modeID + 1) % text_mode.length;
+
+    document.getElementById('textmodeui').innerHTML = text_mode[modeID];
+}
+
+function img_create(width, height) {
+    var img= document.createElement('img');
+    img.src= 'ImagePreview';
+    img.title= 'ImagePreview';
+    img.width= width;
+    img.height= height;
+    return img;
+}
+
+function ClearCurrentFrames()
+{
+    wanted_ImageID = 0;
+    if (displayed_ImageID != -1)
+    {
+		document.body.removeChild(all_canvas[displayed_ImageID]);
+	}
+    displayed_ImageID = -1;
+    all_canvas = new Array();
+}
+
+function GenerateFromText()
+{
+
+    var stepInText = 0;
+    inputText = document.getElementById('text-input').value;
+
+
+    //ClearCurrentFrames();
+
+
+	var i=0;
+    while (stepInText < inputText.length)
+    {
+        stepInText = FillWithText(stepInText,i);
+        i++;
+    }
+
+	UpdatePreview();
+
+}
+
+function FillWithText(start,frameNumber)
+{
+    var ret = start;
+    var canvas = document.createElement('canvas');
+
+    //displayed_ImageID
+    all_canvas.splice(Math.max(0,displayed_ImageID+1+frameNumber), 0, canvas);
+    //all_canvas[all_canvas.length] = canvas;
+
+    canvas.width = LED_line_width * 2;
+    canvas.height = (LED_line_height + LED_line_spacing) * LED_line_count  * 2;
+    var myContext = canvas.getContext('2d');
+    var imageData = myContext.createImageData(canvas.width,canvas.height);
+    var d  = imageData.data;
+
+	var LED_count_in_one_line = LED_line_height*LED_line_width;
+	var LED_count_in_one_line_plus_space = (LED_line_height+LED_line_spacing)*LED_line_width;
+
+    for (var i=0;i<d.length;i+=4)
+    {
+		if ((i/16) % LED_count_in_one_line_plus_space < LED_count_in_one_line)
+		{
+          d[i+0]=0;
+          d[i+1]=20;
+          d[i+2]=0;
+          d[i+3]=255;
+		}
+		else
+		{
+          d[i+0]=0;
+          d[i+1]=0;
+          d[i+2]=0;
+          d[i+3]=255;
+		}
+    }
+
+
+
+
+    var line_x = 0;
+    var line_y = 0;
+
+    for (var i=start; i<inputText.length; i++)
+    {
+        ret++;
+
+        var x_start = line_x;
+        var y_start = line_y * (LED_line_height+LED_line_spacing);
+    	var curChar = (inputText.charCodeAt(i)-32)*5;
+        console.log((inputText.charCodeAt(i)-32)*5);
+
+	var extra_accent = -1;
+
+	switch (curChar)
+	{
+		case 970: //â
+			curChar = 325;
+			extra_accent = 310;
+			break;
+		case 1010: //ê
+			curChar = 345;
+			extra_accent = 310;
+			break;
+		case 1095: //û
+			curChar = 425;
+			extra_accent = 310;
+			break;
+		case 1030: //î
+			curChar = 365;
+			extra_accent = 310;
+			break;
+		case 1060: //ô
+			curChar = 395;
+			extra_accent = 310;
+			break;
+		case 1715: //ŷ
+			curChar = 445;
+			extra_accent = 310;
+			break;
+
+
+
+		case 1005: //é
+			curChar = 345;
+			extra_accent = 470;
+			break;
+
+
+
+		case 960: //à
+			curChar = 325;
+			extra_accent = 320;
+			break;
+
+		case 1000: //è
+			curChar = 345;
+			extra_accent = 320;
+			break;
+
+		case 1085: //ù
+			curChar = 425;
+			extra_accent = 320;
+			break;
+
+
+
+
+		case 980: //ä
+			curChar = 325;
+			extra_accent = 475;
+			break;
+		case 1015: //ë
+			curChar = 345;
+			extra_accent = 475;
+			break;
+		case 1100: //ü
+			curChar = 425;
+			extra_accent = 475;
+			break;
+		case 1035: //ï
+			curChar = 365;
+			extra_accent = 475;
+			break;
+		case 1070: //ö
+			curChar = 395;
+			extra_accent = 475;
+			break;
+		case 1115: //ÿ
+			curChar = 445;
+			extra_accent = 475;
+			break;
+
+
+		default:
+			break;
+	}
+
+	//curChar
+
+        for (var symbol_x=0; symbol_x<5; symbol_x++)
+        {
+
+     
+        var byt = ((ASCII_TO_2D[curChar+symbol_x]));
+	var byt_acc = 0;
+	
+	if (extra_accent != -1)
+	{
+		byt_acc = ((ASCII_TO_2D[extra_accent+symbol_x]));
+	}
+
+            for (var symbol_y=0; symbol_y<8;symbol_y++)
+            {
+                 if ((byt_acc | byt) & (1<<symbol_y))
+                 {
+                     var pixelID = (y_start+symbol_y) * canvas.width * 4 * 2 + (x_start+symbol_x) * 4 * 2;
+                     d[pixelID] = 100;
+                     d[pixelID+1] = 255;
+                     d[pixelID+2] = 50;
+                     d[pixelID+3] = 255;
+                     d[pixelID+4] = 50;
+                     d[pixelID+5] = 255;
+                     d[pixelID+6] = 50;
+                     d[pixelID+7] = 255;
+                     d[pixelID+canvas.width * 4] = 50;
+                     d[pixelID+canvas.width * 4+1] = 255;
+                     d[pixelID+canvas.width * 4+2] = 50;
+                     d[pixelID+canvas.width * 4+3] = 255;
+                     d[pixelID+canvas.width * 4+4] = 50;
+                     d[pixelID+canvas.width * 4+5] = 255;
+                     d[pixelID+canvas.width * 4+6] = 50;
+                     d[pixelID+canvas.width * 4+7] = 255;
+                 }
+            }
+        }
+        line_x += 6;
+        if (line_x > (LED_line_width - 6))
+        {
+            line_x = 0;
+            line_y += 1;
+
+            if (line_y >= LED_line_count)
+            {
+                myContext.putImageData( imageData, 0, 0 );
+                return ret;
+            }
+
+
+        }
+    }
+    myContext.putImageData( imageData, 0, 0 );
+    return ret;
+}
+
+function PostDatas()
+{
+	var datas = {};
+	datas['modeID'] = modeID;
+	datas['refreshDelay'] = refreshDelay;
+
+	for (var i=0; i<all_canvas.length; i++)
+	{
+		//datas['bitmap'+i] = StringView.bytesToBase64(MakeBitmap(all_canvas[i]));
+		datas['bitmap'+i] = btoa(String.fromCharCode.apply(null, MakeBitmap(all_canvas[i])));
+
+		console.log(datas['bitmap'+i]);
+		//datas['bitmap'+i] = new Blob(MakeBitmap(all_canvas[i]), {type: "application/octet-binary"}); ;
+	}	
+
+  	Post('',datas);
+}
+
+function Post(path, params, method) {
+    method = method || 'post'; // Set method to post by default if not specified.
+
+    // The rest of this code assumes you are not using a library.
+    // It can be made less wordy if you use one.
+    var form = new FormData();
+
+    for(var key in params) {
+        if(params.hasOwnProperty(key)) {
+          form.append(key,params[key]);
+         }
+    }
+
+    var request = new XMLHttpRequest();
+    //request.setRequestHeader("X-Foo", "Bar");
+    request.open(method, path);
+    request.send(form);
+}
+
+function MakeBitmap(canvas)
+{
+	var ctxt = canvas.getContext('2d');
+	//var results = "";
+
+	var bits_per_pixel = 1;
+
+
+	//var buffer = new ArrayBuffer((LED_line_count*LED_line_width*LED_line_height*bits_per_pixel)/8);
+	var results = new Uint8Array((LED_line_count*LED_line_width*LED_line_height*bits_per_pixel)/8);
+	//var buffer = new Uint8ArrayBuffer(results);
+
+	var currentSpotInByte = 0;
+	var steps_per_byte = 8/bits_per_pixel;
+	var _256_to_bpp = (Math.pow(2,bits_per_pixel)-1.0)/255.0;
+	var currentChar = 0;
+
+	var globalStep = 0;
+	var maxGlobalStep = LED_line_count*LED_line_width*LED_line_height;
+	var countByte = 0;
+
+	for (var c_Line=LED_line_count-1; c_Line>=0; c_Line--)
+	{
+		for (var c_line_x=0; c_line_x<LED_line_width; c_line_x++)
+		{
+			for (var c_line_y=LED_line_height-1; c_line_y>=0; c_line_y--)
+			{
+				var x = c_line_x;
+				var y = c_Line * (LED_line_height + LED_line_spacing) + c_line_y;
+				var c = ctxt.getImageData(x*2, y*2, 1, 1).data;
+				var charResult = Math.min(Math.pow(2,bits_per_pixel)-1,Math.floor(_256_to_bpp * Math.max(c[0],c[1],c[2])));
+
+				//console.log("push : " + charResult);
+				currentChar |= charResult << (bits_per_pixel*currentSpotInByte);
+				//console.log("result : " + currentChar);
+				currentSpotInByte++;
+
+				if (currentSpotInByte == (steps_per_byte) || globalStep == (maxGlobalStep-1))
+				{
+					//console.log("results : " + currentChar);
+					results[countByte] = currentChar;
+					//results[countByte] = String.fromCharCode(currentChar);
+//					results += String.fromCharCode(currentChar);
+					//results += currentChar;
+					currentChar = 0;
+					currentSpotInByte = 0;
+					countByte++;
+				}
+				globalStep++;
+			}
+		}
+	}
+
+	console.log("bitmap size : " + results.length);
+	console.log("bitmap datas : " + results);
+	return results;
+}
+
+function MakeImagePreview(canvas)
+{
+	var ctxt = canvas.getContext('2d');
+
+	for (var x=0; x<LED_line_width*2;x+=2)
+	{
+		for (var y=0; y<(LED_line_height + LED_line_spacing) * LED_line_count*2;y+=2)
+		{
+			if ((y/2) % (LED_line_height + LED_line_spacing) < LED_line_height)
+			{
+				var c = ctxt.getImageData(x, y, 1, 1).data;
+				ctxt.fillStyle = 'rgb(0,' +
+						 Math.max(c[0],c[1],c[2]) + ',0)';
+				ctxt.fillRect(x, y, 2, 2);
+			}
+			else
+			{
+				ctxt.fillStyle = 'rgb(0,0,0)';
+				ctxt.fillRect(x, y, 2, 2);
+			}
+		}
+	}
+}
+
+var imgs = new Array();
+
+window.onload  = function()
+{
+	//ClearCurrentFrames();
+    //Check File API support
+    if(window.File && window.FileList && window.FileReader)
+    {
+        var filesInput = document.getElementById('files');
+        filesInput.addEventListener('change', function(event){
+            var files = event.target.files; //FileList object
+            console.log('heyy',files);
+
+            for (var i = 0; i< files.length; i++)
+            {
+                var file = files[i];
+                //Only pics
+                if(!file.type.match('image'))
+                    continue;
+
+				var canvas = document.createElement('canvas');
+				//all_canvas.splice(Math.max(0,displayed_ImageID+1+i), 0, canvas);
+				var canId = all_canvas.push(canvas)-1;
+				//all_canvas[all_canvas.length] = canvas;
+				canvas.width = LED_line_width * 2;
+				canvas.height = (LED_line_height + LED_line_spacing) * LED_line_count  * 2;
+				var myContext = canvas.getContext('2d');
+				var img = new Image();
+				var id = imgs.push(img)-1;
+				img.onload = (function(index, canid) {
+					return function () {
+							console.log('yièt',imgs[index]);
+							all_canvas[canid].getContext('2d').drawImage(imgs[index], 0, 0, LED_line_width * 2, (LED_line_height + LED_line_spacing) * LED_line_count * 2);
+							console.log('loaded');
+							MakeImagePreview(all_canvas[canid]);
+							UpdatePreview();
+							//URL.revokeObjectURL(imgs[index].src);
+						}
+
+				}(id, canId));
+				console.log('lol');
+				imgs[id].src = URL.createObjectURL(file);
+                console.log('img:',imgs[id]);
+
+            }
+        });
+    }
+    else
+    {
+        console.log('Your browser does not support File API');
+    }
+        console.log('Crap');
+}
+
+</script>
+
+</body>
+</html>

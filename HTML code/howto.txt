@@ -1,0 +1,9 @@
+﻿Pour chaque changement du javascript :
+
+- remplacer les apostrophes dans les strings par des &#39;
+
+
+- utiliser le minifier https://kangax.github.io/html-minifier/ avec "Decode Entity Characters" pas checké et "Prevent attributes escaping" checké
+
+- Et faire "Remplacer Tout" pour les " vers des '
+- Copier le tout vers la variable "html" du programme arduino
