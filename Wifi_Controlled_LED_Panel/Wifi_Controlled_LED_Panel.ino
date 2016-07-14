@@ -135,9 +135,9 @@ void HandleMsg()
                 
         if (decoded_length != (COL*LIN*ROW*BITS_PER_PIXEL)/8)
         {
-          Serial.println("Erreur  : La taille de l'image reçue " + String(server.arg(i).length()) + " est diffèrente de celle attendue : " + String((COL*LIN*ROW*BITS_PER_PIXEL)/8));
+          Serial.println("Erreur  : La taille de l'image reçue " + String(decoded_length) + " est diffèrente de celle attendue : " + String((COL*LIN*ROW*BITS_PER_PIXEL)/8));
         }
-        int str_length = MIN(server.arg(i).length(),(COL*LIN*ROW*BITS_PER_PIXEL)/8);
+        int str_length = MIN(decoded_length,(COL*LIN*ROW*BITS_PER_PIXEL)/8);
 
         
         int testInt = 0;
@@ -210,9 +210,9 @@ void render2panel(int frame)
     digitalWrite(DATA, pixelValue ? HIGH : LOW);
     digitalWrite(CLK, HIGH);
 
-    //Code censé ajouter le pixel invisible tout les 8 pixels
+    //Code censé ajouter le pixel invisible tout les 7 pixels
     extraLED++;
-    if (extraLED == 8)
+    if (extraLED == 7)
     {
       digitalWrite(CLK, LOW); digitalWrite(CLK, HIGH);
       extraLED = 0;
