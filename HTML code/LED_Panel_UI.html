@@ -10,13 +10,6 @@
 
 
 <h1>Ecran LED</h1>
-<!--
-<p id='demo'>JavaScript 1 1 1  can change HTML content.</p>
--->
-<!-- <button type='button'
-onclick='document.getElementById('demo').innerHTML = 'Hello JavaScript!''>
-Click Me!</button>
--->
 
 <table><tr><td><p><input type='button' onclick='ChangeMode()' value='Défilement :'>
 </td><td>
@@ -48,23 +41,23 @@ Délai de rafraichissement
 <button type='button' onclick='NextFrame()'>Suivante</button>
 <button type='button' onclick='LastFrame()'>Dernière</button>
 <label id='pageid'>0/0</p>
-  
+
 <button  type='button' onclick='PostDatas()'>Envoyer</button>
 <p></p>
 
 <script>
 
 
-//var LED_line_count = 1;
-//var LED_line_spacing = 0;
-//var LED_line_width = 4;
-//var LED_line_height = 4;
 var LED_line_count = 9;
 var LED_line_spacing = 5;
 var LED_line_width = 96;
 var LED_line_height = 7;
+
+//mode de défilement
 var modeID = 0;
 var text_mode = ['Page par page','Défilement Vertical','Décalage'];
+
+//images
 var all_canvas = new Array();
 var inputText;
 var wanted_ImageID = -1;
@@ -469,10 +462,10 @@ function FillWithText(start,frameNumber)
         for (var symbol_x=0; symbol_x<5; symbol_x++)
         {
 
-     
+
         var byt = ((ASCII_TO_2D[curChar+symbol_x]));
 	var byt_acc = 0;
-	
+
 	if (extra_accent != -1)
 	{
 		byt_acc = ((ASCII_TO_2D[extra_accent+symbol_x]));
@@ -521,6 +514,7 @@ function FillWithText(start,frameNumber)
     return ret;
 }
 
+//Create a json with the datas and the n Images data
 function PostDatas()
 {
 	var datas = {};
@@ -534,11 +528,12 @@ function PostDatas()
 
 		console.log(datas['bitmap'+i]);
 		//datas['bitmap'+i] = new Blob(MakeBitmap(all_canvas[i]), {type: "application/octet-binary"}); ;
-	}	
+	}
 
   	Post('',datas);
 }
 
+//Post the data from a json, using a formdata
 function Post(path, params, method) {
     method = method || 'post'; // Set method to post by default if not specified.
 
@@ -558,6 +553,7 @@ function Post(path, params, method) {
     request.send(form);
 }
 
+//Convert image data to a Uint8 Array
 function MakeBitmap(canvas)
 {
 	var ctxt = canvas.getContext('2d');
@@ -616,6 +612,7 @@ function MakeBitmap(canvas)
 	return results;
 }
 
+//Make a green filter to the image and draw black spaces between lines
 function MakeImagePreview(canvas)
 {
 	var ctxt = canvas.getContext('2d');
@@ -642,6 +639,7 @@ function MakeImagePreview(canvas)
 
 var imgs = new Array();
 
+//Load the image files and push them into all_canvas once loaded
 window.onload  = function()
 {
 	//ClearCurrentFrames();

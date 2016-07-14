@@ -23,12 +23,14 @@
 #include "Arduino.h"
 #include "rBase64.h"
 
+#define bufferSize 1600
+
 const char b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    "abcdefghijklmnopqrstuvwxyz"
-    "0123456789+/";
+"abcdefghijklmnopqrstuvwxyz"
+"0123456789+/";
 
 // Internal Buffer
-char buf[3200];
+char buf[bufferSize];
 /* 'Private' declarations */
 inline void a3_to_a4(unsigned char * a4, unsigned char * a3);
 inline void a4_to_a3(unsigned char * a3, unsigned char * a4);
@@ -39,31 +41,31 @@ size_t rbase64_encode(char *output, char *input, size_t inputLen) {
   size_t encLen = 0;
   unsigned char a3[3];
   unsigned char a4[4];
-
+  
   while(inputLen--) {
     a3[i++] = *(input++);
     if(i == 3) {
       a3_to_a4(a4, a3);
-
+      
       for(i = 0; i < 4; i++) {
         output[encLen++] = b64_alphabet[a4[i]];
       }
-
+      
       i = 0;
     }
   }
-
+  
   if(i) {
     for(j = i; j < 3; j++) {
       a3[j] = '\0';
     }
-
+    
     a3_to_a4(a4, a3);
-
+    
     for(j = 0; j < i + 1; j++) {
       output[encLen++] = b64_alphabet[a4[j]];
     }
-
+    
     while((i++ < 3)) {
       output[encLen++] = '=';
     }
@@ -77,39 +79,39 @@ size_t rbase64_decode(char * output, char * input, size_t inputLen) {
   size_t decLen = 0;
   unsigned char a3[3];
   unsigned char a4[4];
-
-
+  
+  
   while (inputLen--) {
     if(*input == '=') {
       break;
     }
-
+    
     a4[i++] = *(input++);
     if (i == 4) {
       for (i = 0; i <4; i++) {
         a4[i] = b64_lookup(a4[i]);
       }
-
+      
       a4_to_a3(a3,a4);
-
+      
       for (i = 0; i < 3; i++) {
         output[decLen++] = a3[i];
       }
       i = 0;
     }
   }
-
+  
   if (i) {
     for (j = i; j < 4; j++) {
       a4[j] = '\0';
     }
-
+    
     for (j = 0; j <4; j++) {
       a4[j] = b64_lookup(a4[j]);
     }
-
+    
     a4_to_a3(a3,a4);
-
+    
     for (j = 0; j < i - 1; j++) {
       output[decLen++] = a3[j];
     }
@@ -129,7 +131,7 @@ size_t rbase64_dec_len(char * input, size_t inputLen) {
   for(i = inputLen - 1; input[i] == '='; i--) {
     numEq++;
   }
-
+  
   return (size_t)(((6 * inputLen) / 8) - numEq);
 }
 
@@ -153,27 +155,27 @@ inline unsigned char b64_lookup(char c) {
       return i;
     }
   }
-
+  
   return -1;
 }
 
 /**
- * Function to Encode the Byte Array to a BASE64 encoded String
- *
- * @param data Pointer to the Source Buffer
- * @param length Source Buffer Length
- *
- * @return Encoded String else the '-FAIL-' string in case of Error
- */
+* Function to Encode the Byte Array to a BASE64 encoded String
+*
+* @param data Pointer to the Source Buffer
+* @param length Source Buffer Length
+*
+* @return Encoded String else the '-FAIL-' string in case of Error
+*/
 String rBASE64::encode(uint8_t *data, size_t length)
 {
   size_t o_length = rbase64_enc_len(length);
   String s = "-FAIL-";
   // Check Size
-  if(o_length < 3200)
+  if(o_length < bufferSize)
   {
     s.reserve(o_length);
-
+    
     /* Make sure that the Length is Ok for the Output */
     if(o_length == rbase64_encode(buf,(char *)data,length))
     {
@@ -184,50 +186,50 @@ String rBASE64::encode(uint8_t *data, size_t length)
 }
 
 /**
- * Function to Encode the Byte Array to a BASE64 encoded String
- *
- * @param data Pointer to the Source Buffer
- * @waring This function assumes that the Input String is a NULL terminated buffer
- *
- * @return Encoded String else the '-FAIL-' string in case of Error
- */
+* Function to Encode the Byte Array to a BASE64 encoded String
+*
+* @param data Pointer to the Source Buffer
+* @waring This function assumes that the Input String is a NULL terminated buffer
+*
+* @return Encoded String else the '-FAIL-' string in case of Error
+*/
 String rBASE64::encode(char *data)
 {
   return rBASE64::encode((uint8_t *)data, strlen(data));
 }
 
 /**
- * Function to Encode the Byte Array to a BASE64 encoded String
- *
- * @param text String containing the Source Buffer
- *
- * @return Encoded String else the '-FAIL-' string in case of Error
- */
+* Function to Encode the Byte Array to a BASE64 encoded String
+*
+* @param text String containing the Source Buffer
+*
+* @return Encoded String else the '-FAIL-' string in case of Error
+*/
 String rBASE64::encode(String text)
 {
   return rBASE64::encode((uint8_t *) text.c_str(), text.length());
 }
 
 /**
- * Function to Decode the Byte Array with BASE64 encoded String to Normal String
- *
- * @param data Pointer to the Source Buffer
- * @param length Source Buffer Length
- *
- * @return Decoded String else the '-FAIL-' string in case of Error
- */
+* Function to Decode the Byte Array with BASE64 encoded String to Normal String
+*
+* @param data Pointer to the Source Buffer
+* @param length Source Buffer Length
+*
+* @return Decoded String else the '-FAIL-' string in case of Error
+*/
 String rBASE64::decode(uint8_t *data, size_t length)
 {
   size_t o_length = rbase64_dec_len((char *)data, length);
   String s = "-FAIL-";
-    Serial.print("length : ");
-    Serial.println(length);
-
-    Serial.print("o_length : ");
-    Serial.println(o_length);
-    //Serial.println("rbase64_decode(buf,(char *)data,length) : " + rbase64_decode(buf,(char *)data,length));
+  Serial.print("length : ");
+  Serial.println(length);
+  
+  Serial.print("o_length : ");
+  Serial.println(o_length);
+  //Serial.println("rbase64_decode(buf,(char *)data,length) : " + rbase64_decode(buf,(char *)data,length));
   // Check Size
-  if(o_length < 3200)
+  if(o_length < bufferSize)
   {
     /* Make sure that the Length is Ok for the Output */
     if(o_length == rbase64_decode(buf,(char *)data,length))
@@ -242,15 +244,10 @@ char* rBASE64::decode_to_char(uint8_t *data, size_t length)
 {
   size_t o_length = rbase64_dec_len((char *)data, length);
   //String s = "-FAIL-";
-  char s[3200];
-    Serial.print("length : ");
-    Serial.println(length);
+  char* s = "-FAIL-";
 
-    Serial.print("o_length : ");
-    Serial.println(o_length);
-    //Serial.println("rbase64_decode(buf,(char *)data,length) : " + rbase64_decode(buf,(char *)data,length));
   // Check Size
-  if(o_length < 3200)
+  if(o_length < bufferSize)
   {
     Serial.println("decode success ");
     /* Make sure that the Length is Ok for the Output */
@@ -264,34 +261,34 @@ char* rBASE64::decode_to_char(uint8_t *data, size_t length)
 }
 
 /**
- * Function to Decode the Byte Array with BASE64 encoded String to Normal String
- *
- * @param data Pointer to the Source Buffer
- * @waring This function assumes that the Input String is a NULL terminated buffer
- *
- * @return Decoded String else the '-FAIL-' string in case of Error
- */
+* Function to Decode the Byte Array with BASE64 encoded String to Normal String
+*
+* @param data Pointer to the Source Buffer
+* @waring This function assumes that the Input String is a NULL terminated buffer
+*
+* @return Decoded String else the '-FAIL-' string in case of Error
+*/
 String rBASE64::decode(char *data)
 {
   return rBASE64::decode((uint8_t *)data, strlen(data));
 }
 
 /**
- * Function to Decode the Byte Array with BASE64 encoded String to Normal String
- *
- * @param text String containing the Source Buffer
- *
- * @return Decoded String else the '-FAIL-' string in case of Error
- */
- String rBASE64::decode(String text)
+* Function to Decode the Byte Array with BASE64 encoded String to Normal String
+*
+* @param text String containing the Source Buffer
+*
+* @return Decoded String else the '-FAIL-' string in case of Error
+*/
+String rBASE64::decode(String text)
 {
   return rBASE64::decode((uint8_t *) text.c_str(), text.length());
 }
 
- char* rBASE64::decode_to_char(String text)
+char* rBASE64::decode_to_char(String text)
 {
   return rBASE64::decode_to_char((uint8_t *) text.c_str(), text.length());
 }
-        
+
 /* Declaring the Main Class Instance */
 rBASE64 rbase64;

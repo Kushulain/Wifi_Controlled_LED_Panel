@@ -1,7 +1,9 @@
 //TODO :
 //fixer le décalage dans l'affichage de l'image
-//Fixer le crash qui survient quand plusieurs images sont chargées
-
+//Fixer le crash qui survient quand plusieurs images sont chargées, surement un rapport avec le todo précédent
+//niveau de gris + gamma, en utilisant BITS_PER_PIXEL (necessite de modifier le javascript et de revoir la taille du buffer dans rBase64.cpp qui devra = à (COL*LIN*ROW*BITS_PER_PIXEL)/8)
+//Verifier que la classe cooldown marche bien (j'ai utilisé que des délais jusque là, j'ai pas eu le tps de tester ma classe)
+//
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -40,7 +42,7 @@ const char* html = "<!DOCTYPE html><meta charset=utf-8><title>Ecran LED</title><
 
 ESP8266WebServer server(80);
 
-
+//class stockant les données des images
 class ImageLED
 {
 public:
@@ -93,11 +95,6 @@ void HandleMsg()
     String message = " ";
     int newImageCount = 0;
 
-
-
-
-    #ifdef DEBUG_MODE
-    #endif
     Serial.print("Found POST with keys : ");
     for (uint8_t i=0; i<server.args(); i++)
     {
@@ -108,22 +105,17 @@ void HandleMsg()
         newImageCount++;
       }
     }
-    Serial.println(" (total of " + String(newImageCount) + " images");
+    Serial.println(" (total of " + String(newImageCount) + " images)");
 
     imageCount = MIN(MAX_FRAMES_COUNT,newImageCount);
 
-    Serial.println("image Count " + imageCount);
+    Serial.print("image Count : ");
     Serial.println(imageCount);
-
-    //NewImages(newImageCount);
-    //DestroyAllImages();
 
     int curLoadedFrame = 0;
 
     for (uint8_t i=0; i<server.args(); i++)
     {
-
-      Serial.println( "pars arg");
       if (server.argName(i) == "modeID")
       {
         scrollingType = server.arg(i).toInt();
@@ -134,83 +126,69 @@ void HandleMsg()
       }
       else if (server.argName(i).startsWith("bitmap", 0))
       {
+        char* decoded = rbase64.decode_to_char(server.arg(i));
+        size_t decoded_length = rbase64_dec_len((char *)(server.arg(i).c_str()), server.arg(i).length());
 
-        char* decoded_str;
-
-        if (server.arg(i).length() != (COL*LIN*ROW*BITS_PER_PIXEL)/8)
+        #ifdef DEBUG_MODE
+        Serial.println("Base64 length is : " + String(server.arg(i).length()) + " decoded length is : " + String(decoded_length));
+        #endif
+                
+        if (decoded_length != (COL*LIN*ROW*BITS_PER_PIXEL)/8)
         {
           Serial.println("Erreur  : La taille de l'image reçue " + String(server.arg(i).length()) + " est diffèrente de celle attendue : " + String((COL*LIN*ROW*BITS_PER_PIXEL)/8));
         }
         int str_length = MIN(server.arg(i).length(),(COL*LIN*ROW*BITS_PER_PIXEL)/8);
-        //const char* buf = server.arg(i).c_str();
 
-        //char binaryResults [((COL*LIN*ROW*BITS_PER_PIXEL)/8)];
+        
         int testInt = 0;
-        char* decoded = rbase64.decode_to_char(server.arg(i));
-        Serial.print("data : ");
-        //decode(server.arg(i).c_str(),binaryResults,((COL*LIN*ROW*BITS_PER_PIXEL)/8));
-        Serial.println(decoded);
-        Serial.println("endData");
-        Serial.print("data2 : ");
+        
+        #ifdef DEBUG_MODE
+        Serial.print("encoded image data : ");
         Serial.println((server.arg(i)));
-        Serial.println("endData");
-
-
-
-        Serial.print("255 : ");
-        Serial.println((unsigned char)(255));
-        Serial.print("ÿ : ");
-        Serial.println((unsigned char)('ÿ'));
-        Serial.println((char)('ÿ'));
-        Serial.println((byte)('ÿ'));
-        Serial.print("0:");
-        Serial.println((int)('\0'));
-
-        //byte testArrayChar[(COL*LIN*ROW*BITS_PER_PIXEL)/8];
-        //server.arg(i).getBytes(testArrayChar,(COL*LIN*ROW*BITS_PER_PIXEL)/8);
-
-        //for (int j=0; j<10; j++)
-        //{
-        //  Serial.println(testArrayChar[j],BIN);
-        //}
+        Serial.println(" ");
+        
+        Serial.print("decoded image data : ");
+        Serial.println(decoded);
+        Serial.println(" ");
+        #endif
 
         for (int k=0; k<str_length; k++)
         {
+          //copie le char* décodé vers le char* des images
+          images[curLoadedFrame].datas[k] = decoded[k];
 
-          images[curLoadedFrame].datas[k] = decoded[k];// buf[k];
-          //test[testInt] = server.arg(i).charAt(k);
-
+          // outputs binary datas :
+          #ifdef DEBUG_MODE
           Serial.print(decoded[k],BIN);
-          Serial.print(" : ");
+          Serial.print(":");
           Serial.print((unsigned char)decoded[k]);
-          //unsigned char
           Serial.print(" ");
-
-
           testInt++;
           if (testInt == 84)
           {
             Serial.println(" ");
             testInt = 0;
-            //test = "";
           }
+          #endif
         }
         curLoadedFrame++;
       }
     }
-    Serial.println( "fin");
+    Serial.println( "POST Fin");
   }
 }
 
-//Format actuelle envoyé depuis le js :
+//Format actuel des données des pixel envoyé depuis le js.
+//Les valeures de pixels sont simplement intégré bit à bit à la suite dans une chaine de byte.
+//En commençant par le bit de poids faible
 //
 //    avec 1 bit par pixel :
-//     ID pixels                   7  6  5  4  3  2  1  0       15 14 13 12 11 10  9  8       23 22 21 20 19 18 17 16
-//     Données (octets) :       [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]
+//     ID pixels                   7  6  5  4  3  2  1  0       15 14 13 12 11 10  9  8       23 22 21 20 19 18 17 16       ...
+//     Données (octets) :       [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]    ...
 //
 //    avec 2 bit par pixel :
-//     ID pixel         [  3  ][  2 ][  1 ][  0 ]     [  7  ][  6 ][  5 ][  4 ]     [  11 ][  10][  9 ][  8 ]
-//     Données :       [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]
+//     ID pixel         [  3  ][  2 ][  1 ][  0 ]     [  7  ][  6 ][  5 ][  4 ]     [  11 ][  10][  9 ][  8 ]     ...
+//     Données :       [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]  [  0  1  1  0  0  1  0  1  ]   ...
 
 void render2panel(int frame)
 {
@@ -218,12 +196,14 @@ void render2panel(int frame)
   int pixels_per_byte = 8/BITS_PER_PIXEL;
   int extraLED = 0;
 
+  //Pour chaque pixel du panneau...
   for (int pixelID=0; pixelID<(ROW*COL*LIN); pixelID++)
   {
+    //...on trouve d'abord le byte correspondant
     int byteId = pixelID/pixels_per_byte;
+    //puis le 1er bit concernant le pixel dans le byte
     int spotInByte = BITS_PER_PIXEL*(pixelID%pixels_per_byte);
-
-
+    //puis on extrait sa valeur grâce a un décalage et un masque
     bool pixelValue = (((images[frame].datas[byteId] >> spotInByte) & POW_2_BPP_MINUS_1) > 0 );
 
     digitalWrite(CLK, LOW);
@@ -282,7 +262,9 @@ void loop(void){
   delay(1000);
 
   Serial.println("loop");
-  if (/*refreshCooldown.TryGo() &&*/ imageCount > 0)
+
+  //Le TryGo() agit comme un délai sans freeze le programme
+  if (refreshCooldown.TryGo() && imageCount > 0)
   {
     Serial.println("RenderPanel");
     render2panel(curr_Frame);
