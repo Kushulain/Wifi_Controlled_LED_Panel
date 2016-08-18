@@ -584,7 +584,7 @@ function MakeBitmap(canvas)
 				var x = c_line_x;
 				var y = c_Line * (LED_line_height + LED_line_spacing) + c_line_y;
 				var c = ctxt.getImageData(x*2, y*2, 1, 1).data;
-				var charResult = Math.min(Math.pow(2,bits_per_pixel)-1,Math.floor(_256_to_bpp * Math.max(c[0],c[1],c[2])));
+				var charResult = Math.min(Math.pow(2,bits_per_pixel)-1,Math.round(_256_to_bpp * Math.max(c[0],c[1],c[2])));
 
 				//console.log("push : " + charResult);
 				currentChar |= charResult << (bits_per_pixel*currentSpotInByte);
