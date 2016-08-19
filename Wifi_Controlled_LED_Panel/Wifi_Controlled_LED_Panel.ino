@@ -171,7 +171,13 @@ void HandleMsg()
           }
           #endif
         }
+
         curLoadedFrame++;
+        
+        if (curLoadedFrame == MAX_FRAMES_COUNT)
+        {
+          break; //Maximum frame count reached
+        }
       }
     }
   }
