@@ -13,7 +13,7 @@
 
 //#define DEBUG_MODE
 
-//attention modifier dans rBase64.cpp aussi
+//attention ces valeurs doivent être modifiées dans rBase64.cpp aussi
 #define COL 96
 #define LIN 7
 #define ROW 9

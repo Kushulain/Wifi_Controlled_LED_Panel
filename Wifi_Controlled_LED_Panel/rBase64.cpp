@@ -23,7 +23,7 @@
 #include "Arduino.h"
 #include "rBase64.h"
 
-#define bufferSize 1600
+#define bufferSize 1008
 
 const char b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 "abcdefghijklmnopqrstuvwxyz"
