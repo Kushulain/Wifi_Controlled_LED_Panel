@@ -201,16 +201,21 @@ void render2panel(int frame)
   // Render content of framebuffer to screen
   int pixels_per_byte = 8/BITS_PER_PIXEL;
   int extraLED = 0;
+  int byteId = 0;
+  int spotInByte = 0;
+  bool pixelValue = false;
+  unsigned char * frameDatas_ptr = (images[frame].datas);
+
 
   //Pour chaque pixel du panneau...
   for (int pixelID=0; pixelID<(ROW*COL*LIN); pixelID++)
   {
     //...on trouve d'abord le byte correspondant
-    int byteId = pixelID/pixels_per_byte;
+    byteId = pixelID/pixels_per_byte;
     //puis le 1er bit concernant le pixel dans le byte
-    int spotInByte = BITS_PER_PIXEL*(pixelID%pixels_per_byte);
+    spotInByte = BITS_PER_PIXEL*(pixelID-(pixels_per_byte*byteId));
     //puis on extrait sa valeur grâce a un décalage et un masque
-    bool pixelValue = (((images[frame].datas[byteId] >> spotInByte) & POW_2_BPP_MINUS_1) > 0 );
+    pixelValue = (((frameDatas_ptr[byteId] >> spotInByte) & POW_2_BPP_MINUS_1) > 0 );
 
     digitalWrite(CLK, LOW);
     digitalWrite(DATA, pixelValue ? HIGH : LOW);
@@ -227,8 +232,6 @@ void render2panel(int frame)
   digitalWrite(STR, HIGH);   // Displays what's in registers
   delay(1);
   digitalWrite(STR, LOW);    // Freezes display
-
-  Serial.println("D");
 }
 
 void setup(void){
@@ -275,7 +278,6 @@ void loop(void){
   //Le TryGo() agit comme un délai sans freeze le programme
   if (refreshCooldown.TryGo() && imageCount > 0)
   {
-    Serial.println("RenderPanel");
     render2panel(curr_Frame);
     curr_Frame = (curr_Frame+1)%imageCount;
   }
