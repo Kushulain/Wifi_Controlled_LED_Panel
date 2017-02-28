@@ -7,22 +7,20 @@
   <meta name='description' content='Manipule l&#39;écran à LED du Jardin d&#39;Alice à distance. Penses à faire une backup de ton texte sur ta machine. ;)'>
 </head>
 <body>
+<style>
+textarea { word-break: break-all;   white-space: pre-line; }
+</style>
 
 
 <h1>Ecran LED</h1>
-
+<!--
 <table><tr><td><p><input type='button' onclick='ChangeMode()' value='Défilement :'>
 </td><td>
-<p id='textmodeui'>Par Page</p></td></tr></table>
+<p id='textmodeui'>Par Page</p></td></tr></table>-->
 
 <p>
-Délai de rafraichissement
-<input id='delay-input' onkeyup='CorrectAndApplyDelay()' value='1.0'>
-</p>
-
-<p>
-<label>Entrer le texte à afficher sur l&#39;écran :
-<input id='text-input' value='Entrez votre texte...'>
+<label>Entrer le texte à afficher sur l&#39;écran : </a></br>
+<textarea style='font-family: monospace' id='text-input' cols='15' rows='9' value='' onkeyup='TextInputChanged(this)' ></textarea></a></br>
 <button type='button' onclick='GenerateFromText()'>Générer </button>
 </p>
 
@@ -30,6 +28,12 @@ Délai de rafraichissement
 <label for='files'>Sélectionner des fichiers : </label>
 <input id='files' type='file' multiple/>
 </p>
+<p>
+Fréquence des images
+<input size="5" id='delay-input' onkeyup='CorrectAndApplyDelay()' value='1.0' wrap="hard">
+</p>
+
+
 
 
 
@@ -166,6 +170,71 @@ var ASCII_TO_2D = [
     //0x08, 0x1C, 0x2A, 0x08, 0x08 // <-
 
 ];
+
+function doGetCaretPosition (oField) {
+
+  // Initialize
+  var iCaretPos = 0;
+
+  // IE Support
+  if (document.selection) {
+
+    // Set focus on the element
+    oField.focus();
+
+    // To get cursor position, get empty selection range
+    var oSel = document.selection.createRange();
+
+    // Move selection start to 0 position
+    oSel.moveStart('character', -oField.value.length);
+
+    // The caret position is selection length
+    iCaretPos = oSel.text.length;
+  }
+
+  // Firefox support
+  else if (oField.selectionStart || oField.selectionStart == '0')
+    iCaretPos = oField.selectionStart;
+
+  // Return results
+  return iCaretPos;
+}
+
+function TextInputChanged(thing)
+{
+  var inputT = document.getElementById('text-input');
+  // inputT.style.word-break = 'break-all';
+
+  if ((inputT.value.length / 16) >= inputT.rows)
+  {
+    inputT.rows += LED_line_count;
+  }
+
+  CleanText();
+}
+
+function CleanText()
+{
+  inputText = document.getElementById('text-input').value;
+  var newString = '';
+  for (var i=0; i<inputText.length; i++)
+  {
+    console.log(inputText.charCodeAt(i));
+    if (inputText.charCodeAt(i) != 10)
+    {
+        newString += inputText[i];
+    }
+    else {
+      for (var k=0; k<16-(i%16);k++)
+      {
+        newString += ' ';
+      }
+    }
+
+  }
+  document.getElementById('text-input').value = newString;
+
+}
 
 function FirstFrame()
 {
@@ -316,30 +385,31 @@ function GenerateFromText()
         i++;
     }
 
+  LastFrame();
 	UpdatePreview();
 
 }
 
 function FillWithText(start,frameNumber)
 {
-    var ret = start;
-    var canvas = document.createElement('canvas');
+  var ret = start;
+  var canvas = document.createElement('canvas');
 
-    //displayed_ImageID
-    all_canvas.splice(Math.max(0,displayed_ImageID+1+frameNumber), 0, canvas);
-    //all_canvas[all_canvas.length] = canvas;
+  //displayed_ImageID
+  all_canvas.splice(Math.max(0,displayed_ImageID+1+frameNumber), 0, canvas);
+  //all_canvas[all_canvas.length] = canvas;
 
-    canvas.width = LED_line_width * 2;
-    canvas.height = (LED_line_height + LED_line_spacing) * LED_line_count  * 2;
-    var myContext = canvas.getContext('2d');
-    var imageData = myContext.createImageData(canvas.width,canvas.height);
-    var d  = imageData.data;
+  canvas.width = LED_line_width * 2;
+  canvas.height = (LED_line_height + LED_line_spacing) * LED_line_count  * 2;
+  var myContext = canvas.getContext('2d');
+  var imageData = myContext.createImageData(canvas.width,canvas.height);
+  var d  = imageData.data;
 
 	var LED_count_in_one_line = LED_line_height*LED_line_width;
 	var LED_count_in_one_line_plus_space = (LED_line_height+LED_line_spacing)*LED_line_width;
 
-    for (var i=0;i<d.length;i+=4)
-    {
+  for (var i=0;i<d.length;i+=4)
+  {
 		if ((i/16) % LED_count_in_one_line_plus_space < LED_count_in_one_line)
 		{
           d[i+0]=0;
@@ -354,164 +424,164 @@ function FillWithText(start,frameNumber)
           d[i+2]=0;
           d[i+3]=255;
 		}
-    }
+  }
 
 
 
 
-    var line_x = 0;
-    var line_y = 0;
+  var line_x = 0;
+  var line_y = 0;
 
-    for (var i=start; i<inputText.length; i++)
+  for (var i=start; i<inputText.length; i++)
+  {
+    ret++;
+
+    var x_start = line_x;
+    var y_start = line_y * (LED_line_height+LED_line_spacing);
+    var curChar = (inputText.charCodeAt(i)-32)*5;
+    console.log((inputText.charCodeAt(i)-32)*5);
+
+    var extra_accent = -1;
+
+  	switch (curChar)
+  	{
+  		case 970: //â
+  			curChar = 325;
+  			extra_accent = 310;
+  			break;
+  		case 1010: //ê
+  			curChar = 345;
+  			extra_accent = 310;
+  			break;
+  		case 1095: //û
+  			curChar = 425;
+  			extra_accent = 310;
+  			break;
+  		case 1030: //î
+  			curChar = 365;
+  			extra_accent = 310;
+  			break;
+  		case 1060: //ô
+  			curChar = 395;
+  			extra_accent = 310;
+  			break;
+  		case 1715: //ŷ
+  			curChar = 445;
+  			extra_accent = 310;
+  			break;
+
+
+
+  		case 1005: //é
+  			curChar = 345;
+  			extra_accent = 470;
+  			break;
+
+
+
+  		case 960: //à
+  			curChar = 325;
+  			extra_accent = 320;
+  			break;
+
+  		case 1000: //è
+  			curChar = 345;
+  			extra_accent = 320;
+  			break;
+
+  		case 1085: //ù
+  			curChar = 425;
+  			extra_accent = 320;
+  			break;
+
+
+
+
+  		case 980: //ä
+  			curChar = 325;
+  			extra_accent = 475;
+  			break;
+  		case 1015: //ë
+  			curChar = 345;
+  			extra_accent = 475;
+  			break;
+  		case 1100: //ü
+  			curChar = 425;
+  			extra_accent = 475;
+  			break;
+  		case 1035: //ï
+  			curChar = 365;
+  			extra_accent = 475;
+  			break;
+  		case 1070: //ö
+  			curChar = 395;
+  			extra_accent = 475;
+  			break;
+  		case 1115: //ÿ
+  			curChar = 445;
+  			extra_accent = 475;
+  			break;
+
+
+  		default:
+  			break;
+  	}
+
+//curChar
+
+    for (var symbol_x=0; symbol_x<5; symbol_x++)
     {
-        ret++;
-
-        var x_start = line_x;
-        var y_start = line_y * (LED_line_height+LED_line_spacing);
-    	var curChar = (inputText.charCodeAt(i)-32)*5;
-        console.log((inputText.charCodeAt(i)-32)*5);
-
-	var extra_accent = -1;
-
-	switch (curChar)
-	{
-		case 970: //â
-			curChar = 325;
-			extra_accent = 310;
-			break;
-		case 1010: //ê
-			curChar = 345;
-			extra_accent = 310;
-			break;
-		case 1095: //û
-			curChar = 425;
-			extra_accent = 310;
-			break;
-		case 1030: //î
-			curChar = 365;
-			extra_accent = 310;
-			break;
-		case 1060: //ô
-			curChar = 395;
-			extra_accent = 310;
-			break;
-		case 1715: //ŷ
-			curChar = 445;
-			extra_accent = 310;
-			break;
 
 
+      var byt = ((ASCII_TO_2D[curChar+symbol_x]));
+      var byt_acc = 0;
 
-		case 1005: //é
-			curChar = 345;
-			extra_accent = 470;
-			break;
+      if (extra_accent != -1)
+      {
+      	byt_acc = ((ASCII_TO_2D[extra_accent+symbol_x]));
+      }
 
-
-
-		case 960: //à
-			curChar = 325;
-			extra_accent = 320;
-			break;
-
-		case 1000: //è
-			curChar = 345;
-			extra_accent = 320;
-			break;
-
-		case 1085: //ù
-			curChar = 425;
-			extra_accent = 320;
-			break;
-
-
-
-
-		case 980: //ä
-			curChar = 325;
-			extra_accent = 475;
-			break;
-		case 1015: //ë
-			curChar = 345;
-			extra_accent = 475;
-			break;
-		case 1100: //ü
-			curChar = 425;
-			extra_accent = 475;
-			break;
-		case 1035: //ï
-			curChar = 365;
-			extra_accent = 475;
-			break;
-		case 1070: //ö
-			curChar = 395;
-			extra_accent = 475;
-			break;
-		case 1115: //ÿ
-			curChar = 445;
-			extra_accent = 475;
-			break;
-
-
-		default:
-			break;
-	}
-
-	//curChar
-
-        for (var symbol_x=0; symbol_x<5; symbol_x++)
-        {
-
-
-        var byt = ((ASCII_TO_2D[curChar+symbol_x]));
-	var byt_acc = 0;
-
-	if (extra_accent != -1)
-	{
-		byt_acc = ((ASCII_TO_2D[extra_accent+symbol_x]));
-	}
-
-            for (var symbol_y=0; symbol_y<8;symbol_y++)
-            {
-                 if ((byt_acc | byt) & (1<<symbol_y))
-                 {
-                     var pixelID = (y_start+symbol_y) * canvas.width * 4 * 2 + (x_start+symbol_x) * 4 * 2;
-                     d[pixelID] = 100;
-                     d[pixelID+1] = 255;
-                     d[pixelID+2] = 50;
-                     d[pixelID+3] = 255;
-                     d[pixelID+4] = 50;
-                     d[pixelID+5] = 255;
-                     d[pixelID+6] = 50;
-                     d[pixelID+7] = 255;
-                     d[pixelID+canvas.width * 4] = 50;
-                     d[pixelID+canvas.width * 4+1] = 255;
-                     d[pixelID+canvas.width * 4+2] = 50;
-                     d[pixelID+canvas.width * 4+3] = 255;
-                     d[pixelID+canvas.width * 4+4] = 50;
-                     d[pixelID+canvas.width * 4+5] = 255;
-                     d[pixelID+canvas.width * 4+6] = 50;
-                     d[pixelID+canvas.width * 4+7] = 255;
-                 }
-            }
-        }
-        line_x += 6;
-        if (line_x > (LED_line_width - 6))
-        {
-            line_x = 0;
-            line_y += 1;
-
-            if (line_y >= LED_line_count)
-            {
-                myContext.putImageData( imageData, 0, 0 );
-                return ret;
-            }
-
-
-        }
+      for (var symbol_y=0; symbol_y<8;symbol_y++)
+      {
+           if ((byt_acc | byt) & (1<<symbol_y))
+           {
+               var pixelID = (y_start+symbol_y) * canvas.width * 4 * 2 + (x_start+symbol_x) * 4 * 2;
+               d[pixelID] = 100;
+               d[pixelID+1] = 255;
+               d[pixelID+2] = 50;
+               d[pixelID+3] = 255;
+               d[pixelID+4] = 50;
+               d[pixelID+5] = 255;
+               d[pixelID+6] = 50;
+               d[pixelID+7] = 255;
+               d[pixelID+canvas.width * 4] = 50;
+               d[pixelID+canvas.width * 4+1] = 255;
+               d[pixelID+canvas.width * 4+2] = 50;
+               d[pixelID+canvas.width * 4+3] = 255;
+               d[pixelID+canvas.width * 4+4] = 50;
+               d[pixelID+canvas.width * 4+5] = 255;
+               d[pixelID+canvas.width * 4+6] = 50;
+               d[pixelID+canvas.width * 4+7] = 255;
+           }
+      }
     }
-    myContext.putImageData( imageData, 0, 0 );
-    return ret;
+    line_x += 6;
+    if (line_x > (LED_line_width - 6))
+    {
+        line_x = 0;
+        line_y += 1;
+
+        if (line_y >= LED_line_count)
+        {
+            myContext.putImageData( imageData, 0, 0 );
+            return ret;
+        }
+
+
+    }
+  }
+  myContext.putImageData( imageData, 0, 0 );
+  return ret;
 }
 
 //Create a json with the datas and the n Images data
@@ -669,10 +739,11 @@ window.onload  = function()
 				var id = imgs.push(img)-1;
 				img.onload = (function(index, canid) {
 					return function () {
-							console.log('yièt',imgs[index]);
+							//console.log('yièt',imgs[index]);
 							all_canvas[canid].getContext('2d').drawImage(imgs[index], 0, 0, LED_line_width * 2, (LED_line_height + LED_line_spacing) * LED_line_count * 2);
-							console.log('loaded');
+							//console.log('loaded');
 							MakeImagePreview(all_canvas[canid]);
+              LastFrame();
 							UpdatePreview();
 							//URL.revokeObjectURL(imgs[index].src);
 						}
@@ -689,7 +760,7 @@ window.onload  = function()
     {
         console.log('Your browser does not support File API');
     }
-        console.log('Crap');
+      //  console.log('Crap');
 }
 
 </script>
