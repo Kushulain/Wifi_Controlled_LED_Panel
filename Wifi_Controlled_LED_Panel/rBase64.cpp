@@ -29,7 +29,7 @@ const char b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 "abcdefghijklmnopqrstuvwxyz"
 "0123456789+/";
 
-// Internal Buffer
+// Internal Buffer -> (COL*LIN*ROW*BITS_PER_PIXEL)/6
 char buf[bufferSize];
 /* 'Private' declarations */
 inline void a3_to_a4(unsigned char * a4, unsigned char * a3);
